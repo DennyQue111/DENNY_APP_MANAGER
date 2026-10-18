@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QTimer, Signal
+from PySide6.QtCore import QObject, QRunnable, QProcess, QThreadPool, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -41,6 +41,23 @@ def executable(name: str) -> str:
         ["where.exe", name], capture_output=True, text=True, check=False
     )
     return resolved.stdout.splitlines()[0].strip() if resolved.stdout.strip() else name
+
+
+class PortScanSignals(QObject):
+    completed = Signal(dict)
+
+
+class PortScanTask(QRunnable):
+    def __init__(self, ports: dict[tuple[str, str], int]):
+        super().__init__()
+        self.ports = ports
+        self.signals = PortScanSignals()
+
+    def run(self) -> None:
+        results = {}
+        for key, port in self.ports.items():
+            results[key] = not port_available(port)
+        self.signals.completed.emit(results)
 
 
 @dataclass
@@ -113,22 +130,35 @@ class AppCard(QFrame):
         label = self.service_statuses.get(service_name)
         if label is None:
             return
-        label.setText(f"{service_name}: {text}")
-        label.setObjectName("serviceRunning" if active else "serviceStopped")
-        label.style().unpolish(label)
-        label.style().polish(label)
+        display = f"{service_name}: {text}"
+        object_name = "serviceRunning" if active else "serviceStopped"
+        if label.text() == display and label.objectName() == object_name:
+            return
+        label.setText(display)
+        if label.objectName() != object_name:
+            label.setObjectName(object_name)
+            label.style().unpolish(label)
+            label.style().polish(label)
 
     def set_running(self, running: bool, message: str | None = None, *, can_stop: bool | None = None,
                     frontend_ready: bool | None = None, can_start: bool | None = None) -> None:
-        self.start_button.setEnabled((not running) if can_start is None else can_start)
-        self.stop_button.setEnabled(running if can_stop is None else can_stop)
-        self.open_button.setEnabled(
-            (running if frontend_ready is None else frontend_ready) and "frontend" in self.config
-        )
-        self.status.setText(message or ("运行中" if running else "已停止"))
-        self.status.setObjectName("statusRunning" if running else "statusStopped")
-        self.status.style().unpolish(self.status)
-        self.status.style().polish(self.status)
+        start_enabled = (not running) if can_start is None else can_start
+        stop_enabled = running if can_stop is None else can_stop
+        open_enabled = (running if frontend_ready is None else frontend_ready) and "frontend" in self.config
+        if self.start_button.isEnabled() != start_enabled:
+            self.start_button.setEnabled(start_enabled)
+        if self.stop_button.isEnabled() != stop_enabled:
+            self.stop_button.setEnabled(stop_enabled)
+        if self.open_button.isEnabled() != open_enabled:
+            self.open_button.setEnabled(open_enabled)
+        status_text = message or ("运行中" if running else "已停止")
+        status_style = "statusRunning" if running else "statusStopped"
+        if self.status.text() != status_text:
+            self.status.setText(status_text)
+        if self.status.objectName() != status_style:
+            self.status.setObjectName(status_style)
+            self.status.style().unpolish(self.status)
+            self.status.style().polish(self.status)
 
 
 class AppManager(QMainWindow):
@@ -139,6 +169,9 @@ class AppManager(QMainWindow):
         self.configs = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))["apps"]
         self.cards: dict[str, AppCard] = {}
         self.logs: dict[tuple[str, str], Service] = {}
+        self.port_states: dict[tuple[str, str], bool] = {}
+        self.scan_in_progress = False
+        self.scan_task: PortScanTask | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -197,10 +230,10 @@ class AppManager(QMainWindow):
             #serviceUnknown { color: #e5bd72; padding: 3px 0; }
         """)
         self.monitor_timer = QTimer(self)
-        self.monitor_timer.setInterval(1500)
-        self.monitor_timer.timeout.connect(self._refresh_statuses)
+        self.monitor_timer.setInterval(2000)
+        self.monitor_timer.timeout.connect(self._request_status_scan)
         self.monitor_timer.start()
-        self._refresh_statuses()
+        self._request_status_scan()
 
     def _service_command(self, config: dict, service_name: str, port: int) -> tuple[str, list[str], Path]:
         service_config = config[service_name]
@@ -235,18 +268,18 @@ class AppManager(QMainWindow):
             if managed and managed.process.state() != QProcess.NotRunning:
                 continue
             port = self._port_for(config, service_name)
-            if not port_available(port):
+            if self.port_states.get((app_id, service_name), False):
                 self._append_log(app_id, service_name, f"端口 {port} 已有服务监听，将监控现有服务。")
         for service_name in ("backend", "frontend"):
             if service_name in config:
                 managed = self.logs.get((app_id, service_name))
                 port = self._port_for(config, service_name)
-                if (managed and managed.process.state() != QProcess.NotRunning) or not port_available(port):
+                if (managed and managed.process.state() != QProcess.NotRunning) or self.port_states.get((app_id, service_name), False):
                     continue
                 QTimer.singleShot(0 if service_name == "backend" else 800, lambda n=service_name: self._start_service(config, n))
-        if "frontend" in config and not port_available(self._port_for(config, "frontend")):
+        if "frontend" in config and self.port_states.get((app_id, "frontend"), False):
             self.open_app(app_id)
-        self._refresh_statuses()
+        self._apply_statuses(self.port_states)
 
     def _start_service(self, config: dict, service_name: str) -> None:
         app_id = config["id"]
@@ -318,22 +351,40 @@ class AppManager(QMainWindow):
         label = "正常退出" if code == 0 else f"进程退出，代码 {code}"
         self._append_log(app_id, service_name, label)
         config = next(item for item in self.configs if item["id"] == app_id)
-        self._refresh_statuses()
+        self._request_status_scan()
 
     def _check_ready(self, app_id: str, service_name: str, port: int) -> None:
         service = self.logs.get((app_id, service_name))
         if not service or service.process.state() == QProcess.NotRunning:
             return
-        if port_available(port):
+        if not self.port_states.get((app_id, service_name), False):
             if service.process.state() == QProcess.Running:
                 QTimer.singleShot(800, lambda a=app_id, n=service_name, p=port: self._check_ready(a, n, p))
             return
         self._append_log(app_id, service_name, "端口已就绪")
+        config = next(item for item in self.configs if item["id"] == app_id)
         if service_name == "frontend" and "frontend" in config:
             self.open_app(app_id)
-        self._refresh_statuses()
+        self._request_status_scan()
 
-    def _refresh_statuses(self) -> None:
+    def _request_status_scan(self) -> None:
+        if self.scan_in_progress:
+            return
+        ports = {
+            (config["id"], service_name): self._port_for(config, service_name)
+            for config in self.configs
+            for service_name in ("backend", "frontend")
+            if service_name in config
+        }
+        self.scan_in_progress = True
+        self.scan_task = PortScanTask(ports)
+        self.scan_task.signals.completed.connect(self._apply_statuses)
+        QThreadPool.globalInstance().start(self.scan_task)
+
+    def _apply_statuses(self, results: dict[tuple[str, str], bool]) -> None:
+        self.port_states = results
+        self.scan_in_progress = False
+        self.scan_task = None
         for config in self.configs:
             app_id = config["id"]
             card = self.cards[app_id]
@@ -344,7 +395,7 @@ class AppManager(QMainWindow):
                 port = self._port_for(config, service_name)
                 service = self.logs.get((app_id, service_name))
                 managed_running = bool(service and service.process.state() != QProcess.NotRunning)
-                listening = not port_available(port)
+                listening = self.port_states.get((app_id, service_name), False)
                 external_running = listening and not managed_running
                 states[service_name] = (listening, managed_running)
                 if listening and external_running:
@@ -389,7 +440,7 @@ class AppManager(QMainWindow):
             if current_id != app_id or service.process.state() == QProcess.NotRunning:
                 continue
             self._stop_process_tree(service.process)
-        self._refresh_statuses()
+        self._request_status_scan()
 
     def closeEvent(self, event) -> None:
         active = [service for service in self.logs.values() if service.process.state() != QProcess.NotRunning]
