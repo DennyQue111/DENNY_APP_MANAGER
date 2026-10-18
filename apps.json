@@ -1,0 +1,88 @@
+{
+  "apps": [
+    {
+      "id": "ai_image_video_generator",
+      "name": "AI 图片视频生成器",
+      "description": "React 前端 + FastAPI 后端",
+      "project": "ai_image_video_generator",
+      "frontend_port": 5174,
+      "backend_port": 8001,
+      "frontend": {
+        "cwd": "frontend",
+        "command": ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "{port}", "--strictPort"],
+        "backend_port": 8001
+      },
+      "backend": {
+        "cwd": "backend",
+        "command": ["{python}", "-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "{port}"]
+      },
+      "url": "http://127.0.0.1:{frontend_port}/"
+    },
+    {
+      "id": "ai_audio_studio",
+      "name": "AI Audio Studio",
+      "description": "React 前端 + FastAPI 后端",
+      "project": "ai_audio_studio",
+      "frontend_port": 5175,
+      "backend_port": 8002,
+      "frontend": {
+        "cwd": "frontend",
+        "command": ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "{port}", "--strictPort"],
+        "backend_port": 8002
+      },
+      "backend": {
+        "cwd": ".",
+        "command": ["{python}", "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", "{port}"]
+      },
+      "url": "http://127.0.0.1:{frontend_port}/"
+    },
+    {
+      "id": "collect_ai_news",
+      "name": "AI News Collector",
+      "description": "React 前端 + FastAPI 后端",
+      "project": "collect_ai_news",
+      "frontend_port": 5176,
+      "backend_port": 8003,
+      "frontend": {
+        "cwd": "frontend",
+        "command": ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "{port}", "--strictPort"],
+        "backend_port": 8003
+      },
+      "backend": {
+        "cwd": "backend",
+        "command": ["{python}", "-m", "uvicorn", "app.main:app", "--reload", "--host", "127.0.0.1", "--port", "{port}"]
+      },
+      "url": "http://127.0.0.1:{frontend_port}/"
+    },
+    {
+      "id": "remotion_video_generator",
+      "name": "Remotion 视频实验室",
+      "description": "React 前端 + FastAPI 后端",
+      "project": "remotion_video_generator",
+      "frontend_port": 5177,
+      "backend_port": 8004,
+      "frontend": {
+        "cwd": ".",
+        "command": ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "{port}", "--strictPort"],
+        "backend_port": 8004
+      },
+      "backend": {
+        "cwd": ".",
+        "command": ["{python}", "-m", "uvicorn", "backend.app.main:app", "--reload", "--host", "127.0.0.1", "--port", "{port}"]
+      },
+      "url": "http://127.0.0.1:{frontend_port}/"
+    },
+    {
+      "id": "blender_vggt_service",
+      "name": "Blender VGGT 场景服务",
+      "description": "Blender Tool Shelf 使用的本地场景重建 API",
+      "project": "blender_plug_in_tools",
+      "backend_port": 8765,
+      "backend": {
+        "cwd": ".",
+        "command": ["{python}", "scene_ai_service/run_service.py", "--port", "{port}"]
+      },
+      "url": "http://127.0.0.1:{backend_port}/docs"
+    }
+  ]
+}
