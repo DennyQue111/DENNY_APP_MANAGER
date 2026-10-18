@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
 
 from denny_app_manager.controllers.git_controller import GitController
 from denny_app_manager.controllers.service_controller import ServiceController
+from denny_app_manager.config import PROJECTS_ROOT
+from denny_app_manager.services.editor import open_project_in_vscode
 from denny_app_manager.ui.app_card import AppCard
 
 
@@ -57,6 +59,7 @@ class MainWindow(QMainWindow):
             card.start_requested.connect(self._start_app)
             card.stop_requested.connect(self._stop_app)
             card.open_requested.connect(self._open_app)
+            card.open_project_requested.connect(self._open_project)
             self.cards[config["id"]] = card
             cards_layout.addWidget(card)
         cards_layout.addStretch()
@@ -124,6 +127,12 @@ class MainWindow(QMainWindow):
             backend_port=config.get("backend_port", ""),
         )
         QDesktopServices.openUrl(QUrl(url))
+
+    def _open_project(self, app_id: str) -> None:
+        config = next(item for item in self.configs if item["id"] == app_id)
+        success, message = open_project_in_vscode(PROJECTS_ROOT / config["project"])
+        if not success:
+            QMessageBox.warning(self, "打开工程失败", message)
 
     def closeEvent(self, event) -> None:
         if self.services.has_active_processes():

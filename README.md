@@ -32,7 +32,7 @@ Vite 前端会把 API 请求转发给对应的后端。端口和启动命令可�
 
 ## Git 操作
 
-每个应用卡片显示当前分支相对上游的领先/落后提交数。点击 **Fetch & Rebase** 会先 fetch；远端有新提交且工作区干净时自动 rebase。若有未提交改动，会 fetch 但跳过 rebase，并在 Git 日志中说明原因。**Push** 只在当前分支有尚未推送的提交时高亮可用；未提交的文件需要先 commit。
+每个应用卡片显示当前分支相对上游的领先/落后提交数。点击 **Fetch & Rebase** 会先 fetch；远端有新提交且工作区干净时自动 rebase。若有未提交改动，会 fetch 但跳过 rebase，并在 Git 日志中说明原因。**Push** 只在当前分支有尚未推送的提交时高亮可用；未提交的文件需要先 commit。点击 **打开工程** 会在本地 VS Code 中打开对应项目目录。
 
 Git 操作在后台执行，不会阻塞窗口。项目必须是 Git 仓库并配置当前分支的上游远端，按钮才会启用。当前 `collect_ai_news` 没有配置上游，`remotion_video_generator` 不是 Git 仓库，因此这两个项目的 Git 按钮会保持禁用，直到补齐仓库/远端配置。
 
@@ -47,6 +47,7 @@ denny_app_manager/
 │   └── git_controller.py       # Git 状态与操作调度
 ├── services/
 │   ├── git.py                  # Git 命令和后台任务
+│   ├── editor.py               # VS Code 工程目录打开
 │   ├── ports.py                # 端口扫描任务
 │   └── processes.py            # 进程启动、停止与日志解码
 └── ui/

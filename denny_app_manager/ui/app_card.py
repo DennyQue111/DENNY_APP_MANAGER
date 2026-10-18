@@ -19,6 +19,7 @@ class AppCard(QFrame):
     open_requested = Signal(str)
     fetch_rebase_requested = Signal(str)
     push_requested = Signal(str)
+    open_project_requested = Signal(str)
 
     def __init__(self, config: dict):
         super().__init__()
@@ -42,6 +43,7 @@ class AppCard(QFrame):
         self.open_button = QPushButton("打开页面")
         self.fetch_rebase_button = QPushButton("Fetch & Rebase")
         self.push_button = QPushButton("Push")
+        self.open_project_button = QPushButton("打开工程")
         self.stop_button.setEnabled(False)
         self.open_button.setEnabled("frontend" in config)
         self.fetch_rebase_button.setEnabled(False)
@@ -53,6 +55,7 @@ class AppCard(QFrame):
         self.open_button.clicked.connect(lambda: self.open_requested.emit(config["id"]))
         self.fetch_rebase_button.clicked.connect(lambda: self.fetch_rebase_requested.emit(config["id"]))
         self.push_button.clicked.connect(lambda: self.push_requested.emit(config["id"]))
+        self.open_project_button.clicked.connect(lambda: self.open_project_requested.emit(config["id"]))
 
         heading = QHBoxLayout()
         heading.addWidget(title)
@@ -77,6 +80,7 @@ class AppCard(QFrame):
             self.open_button,
             self.fetch_rebase_button,
             self.push_button,
+            self.open_project_button,
         ):
             buttons.addWidget(button)
         buttons.addStretch()
