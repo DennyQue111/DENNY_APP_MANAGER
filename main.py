@@ -173,6 +173,7 @@ class AppManager(QMainWindow):
         self.logs: dict[tuple[str, str], Service] = {}
         self.port_states: dict[tuple[str, str], bool] = {}
         self.scan_in_progress = False
+        self.scan_requested = False
         self.scan_task: PortScanTask | None = None
         self._build_ui()
 
@@ -378,6 +379,7 @@ class AppManager(QMainWindow):
 
     def _request_status_scan(self) -> None:
         if self.scan_in_progress:
+            self.scan_requested = True
             return
         ports = {
             (config["id"], service_name): self._port_for(config, service_name)
@@ -434,6 +436,9 @@ class AppManager(QMainWindow):
                 frontend_ready=frontend_ready,
                 can_start=not all_active,
             )
+        if self.scan_requested:
+            self.scan_requested = False
+            QTimer.singleShot(100, self._request_status_scan)
 
     def open_app(self, app_id: str) -> None:
         config = next(item for item in self.configs if item["id"] == app_id)
@@ -445,10 +450,14 @@ class AppManager(QMainWindow):
         QDesktopServices.openUrl(QUrl(url))
 
     def stop_app(self, app_id: str) -> None:
+        card = self.cards[app_id]
+        card.set_running(True, "正在停止…", can_stop=False, can_start=False)
         for (current_id, service_name), service in list(self.logs.items()):
             if current_id != app_id or service.process.state() == QProcess.NotRunning:
                 continue
             self._stop_process_tree(service.process)
+        # Let child processes release their ports before updating the button state.
+        QTimer.singleShot(350, self._request_status_scan)
         self._request_status_scan()
 
     def closeEvent(self, event) -> None:
