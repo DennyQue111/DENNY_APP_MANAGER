@@ -20,9 +20,10 @@ from denny_app_manager.ui.app_card import AppCard
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, configs: list[dict]):
+    def __init__(self, configs: list[dict], local_settings: dict[str, str] | None = None):
         super().__init__()
         self.configs = configs
+        self.local_settings = local_settings or {}
         self.cards: dict[str, AppCard] = {}
         self.setWindowTitle("Denny App Manager")
         self.resize(1050, 850)
@@ -130,7 +131,10 @@ class MainWindow(QMainWindow):
 
     def _open_project(self, app_id: str) -> None:
         config = next(item for item in self.configs if item["id"] == app_id)
-        success, message = open_project_in_vscode(PROJECTS_ROOT / config["project"])
+        success, message = open_project_in_vscode(
+            PROJECTS_ROOT / config["project"],
+            self.local_settings.get("DENNY_VSCODE_PATH"),
+        )
         if not success:
             QMessageBox.warning(self, "打开工程失败", message)
 

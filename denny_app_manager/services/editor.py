@@ -8,8 +8,11 @@ from pathlib import Path
 from PySide6.QtCore import QProcess
 
 
-def _vscode_executable() -> Path | None:
+def _vscode_executable(configured_path: str | None = None) -> Path | None:
     candidates: list[Path] = []
+    if configured_path:
+        configured = Path(configured_path).expanduser()
+        candidates.append(configured / "Code.exe" if configured.is_dir() else configured)
     for env_name, suffix in (
         ("LOCALAPPDATA", Path("Programs") / "Microsoft VS Code" / "Code.exe"),
         ("ProgramFiles", Path("Microsoft VS Code") / "Code.exe"),
@@ -28,12 +31,15 @@ def _vscode_executable() -> Path | None:
     return None
 
 
-def open_project_in_vscode(project_path: Path) -> tuple[bool, str]:
+def open_project_in_vscode(
+    project_path: Path,
+    configured_path: str | None = None,
+) -> tuple[bool, str]:
     project_path = project_path.resolve()
     if not project_path.is_dir():
         return False, f"工程目录不存在：{project_path}"
 
-    executable = _vscode_executable()
+    executable = _vscode_executable(configured_path)
     if executable:
         result = QProcess.startDetached(str(executable), ["--reuse-window", str(project_path)])
         started = result[0] if isinstance(result, tuple) else result

@@ -36,6 +36,8 @@ Vite 前端会把 API 请求转发给对应的后端。端口和启动命令可�
 
 Git 操作在后台执行，不会阻塞窗口。项目必须是 Git 仓库并配置当前分支的上游远端，按钮才会启用。当前 `collect_ai_news` 没有配置上游，`remotion_video_generator` 不是 Git 仓库，因此这两个项目的 Git 按钮会保持禁用，直到补齐仓库/远端配置。
 
+VS Code 安装位置可写在本机 `.env` 的 `DENNY_VSCODE_PATH` 中。`.env` 已加入 `.gitignore`，不会提交；`.env.example` 只提供空配置模板。
+
 ## 代码结构
 
 ```text
