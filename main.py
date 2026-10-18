@@ -6,6 +6,7 @@ import socket
 import subprocess
 import sys
 import time
+from codecs import getincrementaldecoder
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,6 +67,7 @@ class Service:
     log: QPlainTextEdit
     status: QLabel
     port: int
+    decoder: object
 
 
 class AppCard(QFrame):
@@ -93,7 +95,7 @@ class AppCard(QFrame):
         self.stop_button = QPushButton("停止")
         self.open_button = QPushButton("打开页面")
         self.stop_button.setEnabled(False)
-        self.open_button.setEnabled(False)
+        self.open_button.setEnabled("frontend" in config)
         self.start_button.clicked.connect(lambda: self.start_requested.emit(config["id"]))
         self.stop_button.clicked.connect(lambda: self.stop_requested.emit(config["id"]))
         self.open_button.clicked.connect(lambda: self.open_requested.emit(config["id"]))
@@ -144,7 +146,7 @@ class AppCard(QFrame):
                     frontend_ready: bool | None = None, can_start: bool | None = None) -> None:
         start_enabled = (not running) if can_start is None else can_start
         stop_enabled = running if can_stop is None else can_stop
-        open_enabled = (running if frontend_ready is None else frontend_ready) and "frontend" in self.config
+        open_enabled = "frontend" in self.config
         if self.start_button.isEnabled() != start_enabled:
             self.start_button.setEnabled(start_enabled)
         if self.stop_button.isEnabled() != stop_enabled:
@@ -298,15 +300,18 @@ class AppManager(QMainWindow):
         process.setProcessChannelMode(QProcess.MergedChannels)
         process.setProgram(command)
         process.setArguments(arguments)
+        env = process.processEnvironment()
         if service_name == "frontend":
-            env = process.processEnvironment()
             env.insert("PORT", str(port))
             env.insert("DENNY_BACKEND_PORT", str(config[service_name]["backend_port"]))
-            process.setProcessEnvironment(env)
+        env.insert("PYTHONUTF8", "1")
+        env.insert("PYTHONIOENCODING", "utf-8")
+        env.insert("NO_COLOR", "1")
+        process.setProcessEnvironment(env)
         log = self._log_widget(card, service_name, port)
         status = QLabel("启动中")
         status.setObjectName("muted")
-        service = Service(process, log, status, port)
+        service = Service(process, log, status, port, getincrementaldecoder("utf-8")())
         self.logs[key] = service
         process.readyReadStandardOutput.connect(lambda s=service, a=app_id, n=service_name: self._read_output(a, n, s))
         process.started.connect(lambda a=app_id, n=service_name: self._append_log(a, n, f"进程已启动，端口 {port}\n"))
@@ -331,8 +336,9 @@ class AppManager(QMainWindow):
         card.tabs.addTab(tab, f"{name}  ·  {port}")
         return log
 
-    def _read_output(self, app_id: str, service_name: str, service: Service) -> None:
-        output = bytes(service.process.readAllStandardOutput()).decode("utf-8", errors="replace")
+    def _read_output(self, app_id: str, service_name: str, service: Service, *, final: bool = False) -> None:
+        raw = bytes(service.process.readAllStandardOutput())
+        output = service.decoder.decode(raw, final=final)
         if output:
             service.log.moveCursor(service.log.textCursor().MoveOperation.End)
             service.log.insertPlainText(output)
@@ -348,6 +354,9 @@ class AppManager(QMainWindow):
         self.cards[app_id].set_running(False, "启动失败")
 
     def _process_finished(self, app_id: str, service_name: str, code: int, status: QProcess.ExitStatus) -> None:
+        service = self.logs.get((app_id, service_name))
+        if service:
+            self._read_output(app_id, service_name, service, final=True)
         label = "正常退出" if code == 0 else f"进程退出，代码 {code}"
         self._append_log(app_id, service_name, label)
         config = next(item for item in self.configs if item["id"] == app_id)
