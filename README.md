@@ -30,6 +30,30 @@ py -3 -m venv .venv
 
 Vite 前端会把 API 请求转发给对应的后端。端口和启动命令可以在 `apps.json` 修改。
 
+## Git 操作
+
+每个应用卡片显示当前分支相对上游的领先/落后提交数。点击 **Fetch & Rebase** 会先 fetch；远端有新提交且工作区干净时自动 rebase。若有未提交改动，会 fetch 但跳过 rebase，并在 Git 日志中说明原因。**Push** 只在当前分支有尚未推送的提交时高亮可用；未提交的文件需要先 commit。
+
+Git 操作在后台执行，不会阻塞窗口。项目必须是 Git 仓库并配置当前分支的上游远端，按钮才会启用。当前 `collect_ai_news` 没有配置上游，`remotion_video_generator` 不是 Git 仓库，因此这两个项目的 Git 按钮会保持禁用，直到补齐仓库/远端配置。
+
+## 代码结构
+
+```text
+main.py                         # 程序入口
+denny_app_manager/
+├── config.py                   # 路径与应用配置读取
+├── controllers/
+│   ├── service_controller.py   # 应用进程、端口状态与日志事件
+│   └── git_controller.py       # Git 状态与操作调度
+├── services/
+│   ├── git.py                  # Git 命令和后台任务
+│   ├── ports.py                # 端口扫描任务
+│   └── processes.py            # 进程启动、停止与日志解码
+└── ui/
+    ├── app_card.py             # 单个应用卡片
+    └── main_window.py          # 主窗口与控制器连接
+```
+
 ## 说明
 
 这是同一台电脑上的本地进程面板，与 Kubernetes 的“集中管理服务”概念有些相似，但不包含容器编排、集群调度、自动扩缩容等 Kubernetes 功能。当前优先覆盖有前后端服务的项目；Blender 插件本体通过 Blender 加载，不作为独立网页服务启动，这里列出的是它依赖的 VGGT API。
