@@ -41,13 +41,13 @@ def open_project_in_vscode(
 
     executable = _vscode_executable(configured_path)
     if executable:
-        result = QProcess.startDetached(str(executable), ["--reuse-window", str(project_path)])
+        result = QProcess.startDetached(str(executable), ["--new-window", str(project_path)])
         started = result[0] if isinstance(result, tuple) else result
         return (True, "") if started else (False, "VS Code 启动失败。")
 
     command_script = shutil.which("code")
     if command_script:
-        command = subprocess.list2cmdline([command_script, "--reuse-window", str(project_path)])
+        command = subprocess.list2cmdline([command_script, "--new-window", str(project_path)])
         result = QProcess.startDetached(
             os.environ.get("COMSPEC", "cmd.exe"),
             ["/d", "/s", "/c", f'"{command}"'],

@@ -23,7 +23,7 @@
       "name": "AI Audio Studio",
       "description": "React 前端 + FastAPI 后端",
       "project": "ai_audio_studio",
-      "frontend_port": 5175,
+      "frontend_port": 5178,
       "backend_port": 8002,
       "frontend": {
         "cwd": "frontend",
