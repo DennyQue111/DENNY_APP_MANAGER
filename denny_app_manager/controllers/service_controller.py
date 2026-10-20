@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QProcess, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QThreadPool, QTimer, Signal
 
 from denny_app_manager.config import PROJECTS_ROOT
 from denny_app_manager.services.ports import PortScanTask
@@ -81,10 +81,13 @@ class ServiceController(QObject):
         process.setProcessChannelMode(QProcess.MergedChannels)
         process.setProgram(command)
         process.setArguments(arguments)
-        env = process.processEnvironment()
+        env = QProcessEnvironment.systemEnvironment()
         if service_name == "frontend":
             env.insert("PORT", str(port))
-            env.insert("DENNY_BACKEND_PORT", str(config[service_name]["backend_port"]))
+        env.insert(
+            "DENNY_BACKEND_PORT",
+            str(config[service_name].get("backend_port", config.get("backend_port", ""))),
+        )
         env.insert("PYTHONUTF8", "1")
         env.insert("PYTHONIOENCODING", "utf-8")
         env.insert("NO_COLOR", "1")

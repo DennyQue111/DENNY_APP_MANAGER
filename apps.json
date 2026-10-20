@@ -5,12 +5,12 @@
       "name": "AI 图片视频生成器",
       "description": "React 前端 + FastAPI 后端",
       "project": "ai_image_video_generator",
-      "frontend_port": 5174,
-      "backend_port": 8001,
+      "frontend_port": 5175,
+      "backend_port": 8005,
       "frontend": {
         "cwd": "frontend",
         "command": ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "{port}", "--strictPort"],
-        "backend_port": 8001
+        "backend_port": 8005
       },
       "backend": {
         "cwd": "backend",
@@ -23,7 +23,7 @@
       "name": "AI Audio Studio",
       "description": "React 前端 + FastAPI 后端",
       "project": "ai_audio_studio",
-      "frontend_port": 5178,
+      "frontend_port": 5179,
       "backend_port": 8002,
       "frontend": {
         "cwd": "frontend",

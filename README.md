@@ -18,8 +18,8 @@ py -3 -m venv .venv
 
 | 应用 | 前端 | 后端 |
 | --- | ---: | ---: |
-| AI 图片视频生成器 | 5174 | 8001 |
-| AI Audio Studio | 5178 | 8002 |
+| AI 图片视频生成器 | 5175 | 8005 |
+| AI Audio Studio | 5179 | 8002 |
 | AI News Collector | 5176 | 8003 |
 | Remotion 视频实验室 | 5177 | 8004 |
 | Blender VGGT 场景服务 | — | 8765 |
