@@ -150,13 +150,14 @@ class ServiceController(QObject):
         QThreadPool.globalInstance().start(self.scan_task)
 
     def _on_ports_scanned(self, results: dict[tuple[str, str], bool]) -> None:
-        self.port_states = results
         self.scan_in_progress = False
         self.scan_task = None
-        self._emit_all_statuses()
         if self.scan_requested:
             self.scan_requested = False
             QTimer.singleShot(100, self.request_status_scan)
+            return
+        self.port_states = results
+        self._emit_all_statuses()
 
     def _emit_all_statuses(self) -> None:
         for config in self.configs:

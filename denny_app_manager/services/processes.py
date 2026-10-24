@@ -58,6 +58,9 @@ def stop_process_tree(process: QProcess) -> None:
             check=False,
         )
         process.waitForFinished(1500)
+        if process.state() != QProcess.NotRunning:
+            process.kill()
+            process.waitForFinished(1000)
         return
     process.terminate()
     deadline = time.monotonic() + 1.2
